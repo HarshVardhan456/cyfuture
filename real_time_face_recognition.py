@@ -6,13 +6,29 @@ from scipy.spatial.distance import cosine
 
 embedder = FaceNet()
 EMBEDDINGS_FILE = "embeddings.pkl"
-THRESHOLD = 0.5  
+THRESHOLD = 0.5
 
-with open(EMBEDDINGS_FILE, "rb") as f:
-    stored_embeddings = pickle.load(f)
+def load_embeddings():
+    try:
+        with open(EMBEDDINGS_FILE, "rb") as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        print("Embeddings file not found!")
+        return {}
+
+stored_embeddings = load_embeddings()
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
 def get_embedding_from_frame(frame):
-    face = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
+    
+    if len(faces) == 0:
+        return None  # No face detected
+    
+    x, y, w, h = faces[0]  # Use the first detected face
+    face = frame[y:y+h, x:x+w]
+    face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
     face = cv2.resize(face, (160, 160))
     face = np.expand_dims(face, axis=0)
     return embedder.embeddings(face)[0]
@@ -25,14 +41,14 @@ def recognize_face(frame):
     best_match = "Unknown"
     best_score = 0.0
 
-    for person_name, stored_emb in stored_embeddings.items():
-        similarity = 1 - cosine(emb, stored_emb)  
-        if similarity > best_score and similarity > THRESHOLD:
-            best_match = person_name
-            best_score = similarity
+    for person_name, stored_emb_list in stored_embeddings.items():
+        for stored_emb in stored_emb_list:
+            similarity = 1 - cosine(emb, stored_emb)
+            if similarity > best_score and similarity > THRESHOLD:
+                best_match = person_name
+                best_score = similarity
 
     return best_match, best_score
-
 
 cap = cv2.VideoCapture(0)
 
