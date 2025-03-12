@@ -1,0 +1,12 @@
+pip install -r requirements.txt
+download all dependcies
+
+collect face
+type script - python collect_face.py
+enter your name 
+save photo by clicking s buttton 
+quit using q button 
+
+then run script - python face_embedding.py
+ 
+finally - python real_time_face_recognition.py
